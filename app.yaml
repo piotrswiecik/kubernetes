@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cluster-app
+  labels:
+    app: cluster-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cluster-app
+  template:
+    metadata:
+      labels:
+        app: cluster-app
+    spec:
+      serviceAccountName: test-sa
+      containers:
+        - name: cluster-app
+          image: capricornpl/cluster:1.0.12
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: cluster-cm
+          env:
+            - name: ACTUAL_SERVICE_ACCOUNT_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.serviceAccountName
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cluster-svc
+spec:
+  type: NodePort
+  selector:
+    app: cluster-app
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+      nodePort: 30800
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-cm
+data:
+  EXPECTED_SERVICE_ACCOUNT_NAME: "test-sa"
+  APISERVER_IP:  "192.168.49.2"
+  APISERVER_PORT: "8443"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: test-sa
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: test-cr
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: test-rb
+  namespace: default
+subjects:
+- kind: ServiceAccount
+  name: test-sa
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: test-cr
+  apiGroup: rbac.authorization.k8s.io
