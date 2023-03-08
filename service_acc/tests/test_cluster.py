@@ -1,6 +1,6 @@
 import pytest
 
-from cluster import (check_service_account, ServiceAccountException, apiserver_endpoint, KubernetesException)
+from service_acc.cluster import (check_service_account, ServiceAccountException, apiserver_endpoint, KubernetesException)
 
 
 def test_check_service_account_ok(monkeypatch):
